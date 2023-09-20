@@ -10,8 +10,9 @@ It's moo~ moo moo
 ```
 
 Mathematics interpreter utility, written without dependencies, capable of
-- Plotting graph
-- Adding custom math function
+- Interpreting normal mathematics equation
+- Interpreting first order differential equation with Runge-Kutta method
+- Can add custom math function
 
 #### Example
 
@@ -24,7 +25,7 @@ fn main(){
         }));
     });
     let program = moo.parse("x + 10 + relu(-6)").ok().unwrap().unwrap();
-    // run(x, y) output: 10
-    println!("{}", program.run(0.0, 0.0));
+    // run(x) output: 10
+    println!("{}", program.run(0.0));
 }
 ```

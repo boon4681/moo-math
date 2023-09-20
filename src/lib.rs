@@ -75,14 +75,15 @@ pub enum Primitive {
 }
 
 impl Program {
-    fn run(&self, x: f64, y: f64) -> f64 {
-        self.body.perform(x, y)
+    fn run(&self, x: f64) -> f64 {
+        self.body.perform(x, 0.0)
     }
-    fn plot(&self) {
-        for i in -100..100 {
-            let i = f64::from(i) * 0.01;
-            println!("{}", self.run(i, 0.0));
-        }
+    fn runge_kutta(&self, x0: f64, y0: f64, step: f64) -> (f64, f64) {
+        let a1 = step * self.body.perform(x0, y0);
+        let a2 = step * self.body.perform(x0 + step / 2.0, y0 + a1 / 2.0);
+        let a3 = step * self.body.perform(x0 + step / 2.0, y0 + a2 / 2.0);
+        let a4 = step * self.body.perform(x0, y0 + a3);
+        (y0 + (a1 + 2.0 * a2 + 2.0 * a3 + a4) / 6.0, x0 + step)
     }
 }
 
@@ -625,8 +626,8 @@ mod parse_tests {
                 f64::max(0.0, v)
             }));
         });
-        println!("{:?}", moo.parse("abs(x)").ok().unwrap().unwrap().run(0.0, 0.0));
+        println!("{:?}", moo.parse("abs(x)").ok().unwrap().unwrap().run(0.0));
         let program = moo.parse("relu(x)").ok().unwrap().unwrap();
-        program.run(0.0, 0.0);
+        program.run(0.0);
     }
 }
