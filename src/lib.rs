@@ -9,6 +9,7 @@ mod utils;
 
 use crate::utils::{IIter, Iter};
 use std::collections::HashMap;
+use std::f64;
 
 macro_rules! cast_opt_ok {
     ($i:expr) => {
@@ -76,6 +77,12 @@ pub enum Primitive {
 impl Program {
     fn run(&self, x: f64, y: f64) -> f64 {
         self.body.perform(x, y)
+    }
+    fn plot(&self) {
+        for i in -100..100 {
+            let i = f64::from(i) * 0.01;
+            println!("{}", self.run(i, 0.0));
+        }
     }
 }
 
@@ -299,12 +306,11 @@ impl<'a> Tokenizer<'a> {
 }
 
 pub struct Moo<'a> {
-    source: &'a str,
     functions: HashMap<&'a str, Function>,
 }
 
 impl<'a> Moo<'a> {
-    fn new(source: &str, add_on: fn(functions: &mut HashMap<&str, Function>)) -> Moo {
+    fn new(add_on: fn(functions: &mut HashMap<&str, Function>)) -> Moo<'a> {
         let mut functions: HashMap<&str, Function> = HashMap::new();
         functions.insert("sin", Function::new("sin", |v| {
             f64::sin(v)
@@ -315,13 +321,13 @@ impl<'a> Moo<'a> {
         functions.insert("abs", Function::new("abs", |v| {
             f64::abs(v)
         }));
+        add_on(&mut functions);
         Moo {
-            source,
             functions,
         }
     }
-    fn parse(&self) -> Result<Option<Program>, &str> {
-        let mut tokenizer = Tokenizer::new(self.source);
+    fn parse(&self, source: &str) -> Result<Option<Program>, &str> {
+        let mut tokenizer = Tokenizer::new(source);
         let mut tokens: Vec<(Token, usize, usize)> = Vec::new();
         loop {
             let result = tokenizer.next();
@@ -609,12 +615,18 @@ mod expr_tests {
 
 #[cfg(test)]
 mod parse_tests {
+    use crate::Function;
     use super::*;
 
     #[test]
     fn parse_1() {
-        let mut moo = Moo::new("9 / abs(10 - 10^2)+3", |functions| {});
-        println!("{:?}", moo.parse().ok().unwrap().unwrap().run(0.0, 0.0));
-        println!("{:?}", moo.parse().err());
+        let mut moo = Moo::new(|functions| {
+            functions.insert("relu", Function::new("relu", |v| {
+                f64::max(0.0, v)
+            }));
+        });
+        println!("{:?}", moo.parse("abs(x)").ok().unwrap().unwrap().run(0.0, 0.0));
+        let program = moo.parse("relu(x)").ok().unwrap().unwrap();
+        program.run(0.0, 0.0);
     }
 }
