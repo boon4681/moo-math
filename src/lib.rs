@@ -514,7 +514,6 @@ impl<'a> Moo<'a> {
                     return Err("ERROR 1");
                 }
             }
-            Ok(None)
         } else {
             Ok(None)
         };
@@ -621,7 +620,7 @@ mod parse_tests {
 
     #[test]
     fn parse_1() {
-        let mut moo = Moo::new(|functions| {
+        let moo = Moo::new(|functions| {
             functions.insert("relu", Function::new("relu", |v| {
                 f64::max(0.0, v)
             }));
