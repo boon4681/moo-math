@@ -639,7 +639,6 @@ mod parse_tests {
                 f64::max(0.0, v)
             });
         });
-        // println!("{:?}", moo.parse("abs(x)").ok().unwrap().unwrap().run(0.0));
         let now = SystemTime::now();
         let program = moo.parse("1 + 4.9 * (500 / 10 - 5 * (14.009 ^ 7)) ^ 0.2 + x - 100 ^ (3.90 - 50)").ok().unwrap().unwrap();
         match now.elapsed() {
