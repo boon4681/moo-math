@@ -40,20 +40,7 @@ macro_rules! try_one_char {
     }};
 }
 
-#[derive(Clone, Debug)]
-pub struct Function {
-    pub name: String,
-    pub func: fn(f64) -> f64,
-}
-
-impl Function {
-    fn new(name: &str, func: fn(f64) -> f64) -> Self {
-        Self {
-            name: name.to_string(),
-            func,
-        }
-    }
-}
+type Function = fn(f64) -> f64;
 
 #[derive(Debug)]
 pub struct Program {
@@ -70,7 +57,6 @@ pub enum Expression {
 pub enum Primitive {
     Function((Function, Box<Expression>)),
     Identifier(String),
-    Parenthesis(Box<Expression>),
     Number(f64),
 }
 
@@ -92,7 +78,6 @@ impl Primitive {
         use Primitive::*;
         match self {
             Function(_) => "Function",
-            Parenthesis(_) => "Parenthesis",
             Identifier(_) => "Identifier",
             Number(_) => "Number",
         }
@@ -101,10 +86,7 @@ impl Primitive {
         use Primitive::*;
         match self {
             Function(func) => {
-                (func.0.func)(func.1.perform(x, y))
-            }
-            Parenthesis(expr) => {
-                expr.perform(x, y)
+                (func.0)(func.1.perform(x, y))
             }
             Identifier(ident) => {
                 match ident.as_str() {
@@ -162,6 +144,21 @@ impl Token {
             LParent => "LParent",
             RParent => "RParent",
             Comma => "Comma",
+        }
+    }
+    fn to_string(&self) -> String {
+        use Token::*;
+        match self {
+            Number(num) => num.to_string(),
+            Add => "+".to_string(),
+            Sub => "-".to_string(),
+            Mult => "*".to_string(),
+            Div => "/".to_string(),
+            Pow => "^".to_string(),
+            LParent => "(".to_string(),
+            RParent => ")".to_string(),
+            Comma => "Comma".to_string(),
+            Identifier(ident) => ident.to_string(),
         }
     }
 }
@@ -222,12 +219,15 @@ fn number(source: &str) -> Result<Option<(f64, usize)>, &str> {
         let mut chars = source.get(i..).unwrap().chars();
         let ch = chars.next().unwrap();
         if ch == '.' {
+            i += 1;
             for ch in chars {
                 if ch == '.' {
                     return Err("Unexpected number");
                 }
                 if ch.is_digit(10) {
                     i += 1;
+                } else {
+                    break;
                 }
             }
             num_str = &source[..i];
@@ -313,15 +313,15 @@ pub struct Moo<'a> {
 impl<'a> Moo<'a> {
     fn new(add_on: fn(functions: &mut HashMap<&str, Function>)) -> Moo<'a> {
         let mut functions: HashMap<&str, Function> = HashMap::new();
-        functions.insert("sin", Function::new("sin", |v| {
+        functions.insert("sin", |v| {
             f64::sin(v)
-        }));
-        functions.insert("cos", Function::new("cos", |v| {
-            f64::sin(v)
-        }));
-        functions.insert("abs", Function::new("abs", |v| {
+        });
+        functions.insert("cos",  |v| {
+            f64::cos(v)
+        });
+        functions.insert("abs", |v| {
             f64::abs(v)
-        }));
+        });
         add_on(&mut functions);
         Moo {
             functions,
@@ -334,14 +334,17 @@ impl<'a> Moo<'a> {
             let result = tokenizer.next();
             if result.is_ok() {
                 match result.unwrap() {
-                    Some(token) => tokens.push(token),
+                    Some(token) => {
+                        tokens.push(token);
+                    }
                     None => break,
                 }
             } else {
                 break;
             }
         }
-        Ok(self.ast_program(&mut Iter::new(&tokens))?)
+        let token_iter = &mut Iter::new(&tokens);
+        Ok(self.ast_program(token_iter)?)
     }
     fn ast_program(&self, iter: &mut Iter<(Token, usize, usize)>) -> Result<Option<Program>, &str> {
         let body = self.ast_additive_expression(iter)?;
@@ -495,7 +498,7 @@ impl<'a> Moo<'a> {
                                 }
                                 None => return Err("Parenthesis expected ')'")
                             }
-                            Ok(Some(Expression::Primitive(Primitive::Parenthesis(Box::new(expr)))))
+                            Ok(Some(expr))
                         }
                         None => {
                             match iter.next() {
@@ -539,7 +542,9 @@ mod numeric_tests {
     #[test]
     fn number_float() {
         let mut tokenizer = Tokenizer::new(" 10.1");
-        assert_eq!(tokenizer.next().unwrap().unwrap().0.typ(), "Number");
+        let token = tokenizer.next().unwrap().unwrap().0;
+        println!("{}", token.to_string());
+        assert_eq!(token.typ(), "Number");
     }
 
     #[test]
@@ -596,10 +601,18 @@ mod expr_tests {
 
     #[test]
     fn expr_1() {
-        let mut tokenizer = Tokenizer::new(" 10  + x");
-        assert_eq!(tokenizer.next().unwrap().unwrap().0.typ(), "Number");
-        assert_eq!(tokenizer.next().unwrap().unwrap().0.typ(), "Operator");
-        assert_eq!(tokenizer.next().unwrap().unwrap().0.typ(), "Identifier");
+        let mut tokenizer = Tokenizer::new(" 10.6 + x");
+        let a = tokenizer.next().unwrap().unwrap().0;
+        let b = tokenizer.next().unwrap().unwrap().0;
+        let c = tokenizer.next().unwrap().unwrap().0;
+
+        println!("{}", a.to_string());
+        println!("{}", b.to_string());
+        println!("{}", c.to_string());
+
+        assert_eq!(a.typ(), "Number");
+        assert_eq!(b.typ(), "Operator");
+        assert_eq!(c.typ(), "Identifier");
     }
 
     #[test]
@@ -620,13 +633,23 @@ mod parse_tests {
 
     #[test]
     fn parse_1() {
+        use std::time::{Duration, SystemTime};
         let moo = Moo::new(|functions| {
-            functions.insert("relu", Function::new("relu", |v| {
+            functions.insert("relu", |v| {
                 f64::max(0.0, v)
-            }));
+            });
         });
-        println!("{:?}", moo.parse("abs(x)").ok().unwrap().unwrap().run(0.0));
-        let program = moo.parse("relu(x)").ok().unwrap().unwrap();
+        // println!("{:?}", moo.parse("abs(x)").ok().unwrap().unwrap().run(0.0));
+        let now = SystemTime::now();
+        let program = moo.parse("1 + 4.9 * (500 / 10 - 5 * (14.009 ^ 7)) ^ 0.2 + x - 100 ^ (3.90 - 50)").ok().unwrap().unwrap();
+        match now.elapsed() {
+            Ok(elapsed) => {
+                println!("{}us", elapsed.as_micros());
+            }
+            Err(e) => {
+                println!("Error: {e:?}");
+            }
+        }
         program.run(0.0);
     }
 }
