@@ -311,12 +311,12 @@ pub struct Moo<'a> {
 }
 
 impl<'a> Moo<'a> {
-    fn new(add_on: fn(functions: &mut HashMap<&str, Function>)) -> Moo<'a> {
+    pub fn new(add_on: fn(functions: &mut HashMap<&str, Function>)) -> Moo<'a> {
         let mut functions: HashMap<&str, Function> = HashMap::new();
         functions.insert("sin", |v| {
             f64::sin(v)
         });
-        functions.insert("cos",  |v| {
+        functions.insert("cos", |v| {
             f64::cos(v)
         });
         functions.insert("abs", |v| {
@@ -327,7 +327,7 @@ impl<'a> Moo<'a> {
             functions,
         }
     }
-    fn parse(&self, source: &str) -> Result<Option<Program>, &str> {
+    pub fn parse(&self, source: &str) -> Result<Option<Program>, &str> {
         let mut tokenizer = Tokenizer::new(source);
         let mut tokens: Vec<(Token, usize, usize)> = Vec::new();
         loop {
@@ -628,9 +628,8 @@ mod expr_tests {
 
 #[cfg(test)]
 mod parse_tests {
-    use crate::Function;
     use super::*;
-
+    
     #[test]
     fn parse_1() {
         use std::time::{Duration, SystemTime};
@@ -640,15 +639,15 @@ mod parse_tests {
             });
         });
         let now = SystemTime::now();
-        let program = moo.parse("1 + 4.9 * (500 / 10 - 5 * (14.009 ^ 7)) ^ 0.2 + x - 100 ^ (3.90 - 50)").ok().unwrap().unwrap();
+        let program = moo.parse("1 + 4.9 ^ 0.2 * x").ok().unwrap().unwrap();
         match now.elapsed() {
             Ok(elapsed) => {
-                println!("{}us", elapsed.as_micros());
+                println!("{}ns", elapsed.as_nanos());
             }
             Err(e) => {
                 println!("Error: {e:?}");
             }
         }
-        program.run(0.0);
+        println!("{}", program.run(1000.0));
     }
 }

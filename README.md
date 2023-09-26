@@ -20,9 +20,9 @@ Mathematics interpreter utility, written without dependencies, capable of
 fn main(){
     let mut moo = Moo::new(|functions| {
         // add custom function
-        functions.insert("relu", Function::new("relu", |v| {
+        functions.insert("relu", |v| {
             f64::max(0.0, v)
-        }));
+        });
     });
     let program = moo.parse("x + 10 + relu(-6)").ok().unwrap().unwrap();
     // run(x) output: 10
